@@ -9,54 +9,86 @@ Um sistema financeiro básico e responsivo construído com Vue.js 3, projetado p
 
 ## ✨ Funcionalidades
 
-- **Adição de Transações**
-- **Seleção de Tipo (Receita/Despesa)**
-- **Categorização de Despesas**
-- **Listagem e Histórico**
-- **Cálculo de Saldo Total**
-- **Edição de Transações**
-- **Exclusão de Transações**
-- **Gráficos Visuais**:
-  - Gráfico de Pizza
-  - Gráfico de Barras
-- **Persistência de Dados Local**
-- **Design Responsivo**
-- **Validação de Entrada**
+* **Adição de Transações**: Registre receitas e despesas de forma intuitiva.
+* **Seleção de Tipo (Receita/Despesa)**: Botões dedicados para diferenciar o tipo de transação, aplicando automaticamente o sinal correto.
+* **Categorização de Despesas**: Classifique suas despesas em categorias predefinidas para melhor organização.
+* **Listagem e Histórico**: Visualize todas as transações em um histórico claro.
+* **Cálculo de Saldo Total**: Acompanhe o saldo atual de suas finanças em tempo real.
+* **Edição de Transações**: Modifique os detalhes de qualquer transação registrada.
+* **Exclusão de Transações**: Remova transações indesejadas com confirmação.
+* **Gráficos Visuais**:
+    * Gráfico de Pizza: Mostra a distribuição das despesas por categoria.
+    * Gráfico de Barras: Compara o total de receitas com o total de despesas.
+* **Persistência de Dados Local**: Os dados são salvos automaticamente no `LocalStorage` do navegador, persistindo mesmo após o fechamento da aba ou navegador (são perdidos apenas se o cache for limpo).
+* **Design Responsivo**: Layout que se adapta a diferentes tamanhos de tela (desktop, tablet, celular), proporcionando uma boa experiência em qualquer dispositivo.
+* **Validação de Entrada**: Regras básicas para evitar a inserção de dados inconsistentes (ex: descrição vazia, valor zero/negativo).
+
+---
+
+## 🚀 Últimas Atualizações (Julho de 2025)
+
+Grandes melhorias foram implementadas para aprimorar a usabilidade, o detalhamento das transações e a estabilidade do sistema:
+
+* **Reestruturação Completa da Arquitetura**: Projeto refatorado para uma estrutura modular com Componentes Vue e Composables, facilitando a manutenção e a escalabilidade.
+* **Detalhamento da Transação**:
+    * Campo "Descrição" renomeado para **"Nome do Item/Produto"**.
+    * Adicionado novo campo **"Descrição Detalhada"** (obrigatório), para informações adicionais sobre a transação.
+* **Gestão de Datas Aprimorada**:
+    * Campo de **Data** adicionado a cada transação.
+    * Correção precisa na exibição de datas para lidar com fusos horários.
+* **Categorias para Receitas**: Agora é possível categorizar suas transações de **Receita**, com um seletor dinâmico de categorias (Receita/Despesa).
+* **Filtro Avançado de Transações**:
+    * Implementada funcionalidade de **filtrar transações por Dia, Mês ou Ano**, com controles dedicados.
+* **Dashboard Financeiro Detalhado**:
+    * Exibição de **Total de Receitas**, **Total de Despesas** e **Saldo Líquido** no cabeçalho, sempre refletindo o período filtrado.
+    * Gráficos atualizam automaticamente ao adicionar transações ou aplicar filtros.
+* **Modal de Detalhes da Transação**:
+    * Botão **"Detalhes"** no histórico que abre um modal com todas as informações pormenorizadas da transação.
+* **Exportação e Importação de Dados**:
+    * Funcionalidades para **Exportar** todos os dados para um arquivo JSON.
+    * Funcionalidades para **Importar** dados de um arquivo JSON, permitindo backup e transferência.
+* **Robustez e Estabilidade**:
+    * Validações de entrada aprimoradas para garantir a integridade dos dados.
+    * Correção de diversos bugs de reatividade, garantindo que o histórico, saldo e gráficos atualizem automaticamente.
+    * Resolução de erros de compilação (`ReferenceError`, `TypeError`) e layout responsivo.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-- [Vue.js 3](https://vuejs.org/)
-- [Vite](https://vitejs.dev/)
-- [Chart.js](https://www.chartjs.org/) + [Vue Chart.js](https://vue-chartjs.org/)
-- [LocalStorage](https://developer.mozilla.org/pt-BR/docs/Web/API/Window/localStorage)
-- [Git](https://git-scm.com/)
-- [Vercel](https://vercel.com/)
+* **[Vue.js 3](https://vuejs.org/)**: Framework JavaScript progressivo para a construção da interface do usuário.
+* **[Vite](https://vitejs.dev/)**: Ferramenta de build rápida para desenvolvimento e otimização de produção.
+* **[Chart.js](https://www.chartjs.org/) & [Vue Chart.js](https://vue-chartjs.org/)**: Biblioteca para a criação dos gráficos interativos.
+* **[LocalStorage](https://developer.mozilla.org/pt-BR/docs/Web/API/Window/localStorage)**: API do navegador para persistência de dados no lado do cliente.
+* **[Git](https://git-scm.com/)**: Sistema de controle de versão.
+* **[Vercel](https://vercel.com/)**: Plataforma de hospedagem para deploy rápido e fácil de aplicações front-end.
 
 ---
 
 ## 🏗️ Estrutura do Projeto
 
+O projeto segue uma arquitetura modular com o uso de componentes Vue e Composition API (Composables) para melhor organização e reusabilidade:
+
 ```plaintext
 sistemafinanceiro/
 ├── public/                 # Arquivos estáticos (favicon, etc.)
 ├── src/
-│   ├── assets/             # Imagens e fontes
-│   ├── components/         # Componentes reutilizáveis
-│   │   ├── BalanceDisplay.vue
-│   │   ├── TransactionForm.vue
-│   │   ├── TransactionList.vue
-│   │   └── ChartsDisplay.vue
-│   ├── composables/
-│   │   └── useTransactions.js
-│   ├── App.vue
-│   └── main.js
-├── .gitignore
-├── index.html
-├── package.json
-├── vite.config.js
-└── README.md
+│   ├── assets/             # Ativos como imagens, fontes (não usados neste projeto básico)
+│   ├── components/         # Componentes de UI reutilizáveis
+│   │   ├── BalanceDisplay.vue    # Exibe o saldo total
+│   │   ├── TransactionForm.vue   # Formulário de adição/edição de transações
+│   │   ├── TransactionList.vue   # Lista de histórico de transações
+│   │   ├── ChartsDisplay.vue     # Componente para exibir os gráficos
+│   │   └── TransactionDetailsModal.vue # NOVO: Modal de detalhes da transação
+│   ├── composables/        # Lógica de negócio reutilizável (Composition API)
+│   │   └── useTransactions.js    # Gerencia todas as operações e estados de transações
+│   ├── App.vue             # Componente raiz: orquestra o layout e integra os outros componentes/logic
+│   └── main.js             # Ponto de entrada da aplicação Vue
+├── .gitignore              # Arquivos e pastas a serem ignorados pelo Git
+├── index.html              # Arquivo HTML principal da aplicação
+├── package.json            # Metadados do projeto e dependências
+├── vite.config.js          # Configuração do Vite
+└── README.md               # Este arquivo!
 ```
 
 ---
