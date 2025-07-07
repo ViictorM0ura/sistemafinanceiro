@@ -40,7 +40,8 @@ const props = defineProps({
 // Define os eventos que este componente pode emitir para o seu componente pai (`App.vue`).
 const emit = defineEmits([
   'edit-transaction',
-  'delete-transaction'
+  'delete-transaction',
+  'show-details' // NOVO: Evento para mostrar detalhes da transação.
 ]);
 
 // ============================================================================
@@ -49,8 +50,8 @@ const emit = defineEmits([
 
 // Acessa as variáveis e funções de filtro do composable `useTransactions`.
 const {
-  transactions: allTransactionsFromComposble, // Para o v-if inicial, não confunda com a prop 'transactions'
-  filteredTransactions: filteredTransactionsFromComposble, // Otimização: usa um nome diferente para evitar conflito com a prop
+  transactions: allTransactionsFromComposble, // Para o v-if inicial
+  filteredTransactions: filteredTransactionsFromComposble,
   filterType: filterTypeFromComposble,
   filterValue: filterValueFromComposble,
   updateFilter: updateFilterFromComposble
@@ -84,7 +85,16 @@ const handleDelete = (id) => {
 };
 
 /**
- * Formata uma string de data (YYYY-MM-DD) para o formato local (DD/MM/AAAA).
+ * Lida com o clique no botão "Detalhes" de uma transação.
+ * @param {object} transaction - O objeto da transação a ser exibida em detalhes.
+ */
+const handleShowDetails = (transaction) => {
+  emit('show-details', transaction);
+};
+
+/**
+ * Formata uma string de data (YYYY-MM-DD) para o formato local (DD/MM/AAAA),
+ * garantindo que o fuso horário seja respeitado e evite o "deslocamento de dia".
  * @param {string} dateString - A string de data no formato 'YYYY-MM-DD'.
  * @returns {string} A data formatada ou 'Data Inválida'.
  */
@@ -202,6 +212,7 @@ watch(() => props.filteredTransactions, (newVal) => {
           </span>
         </div>
         <div class="transaction-actions">
+          <button @click="handleShowDetails(transaction)" class="details-btn">Detalhes</button>
           <button @click="handleEdit(transaction)" class="edit-btn">Editar</button>
           <button @click="handleDelete(transaction.id)" class="delete-btn">Excluir</button>
         </div>
@@ -317,7 +328,7 @@ watch(() => props.filteredTransactions, (newVal) => {
   flex-shrink: 0;
 }
 
-/* Estilos para o container dos botões de ação (Editar, Excluir) */
+/* Estilos para o container dos botões de ação (Detalhes, Editar, Excluir) */
 .transactions-list .transaction-actions {
   display: flex;
   gap: 8px;
@@ -333,6 +344,18 @@ watch(() => props.filteredTransactions, (newVal) => {
   transition: background-color 0.3s ease;
 }
 
+/* Estilos específicos para o botão de detalhes. */
+.transactions-list .details-btn {
+  background-color: #6c757d; /* Cinza */
+  color: white;
+  border: none;
+}
+
+.transactions-list .details-btn:hover {
+  background-color: #5a6268;
+}
+
+/* Estilos específicos para o botão de editar. */
 .transactions-list .edit-btn {
   background-color: #3498db;
   color: white;
@@ -343,6 +366,7 @@ watch(() => props.filteredTransactions, (newVal) => {
   background-color: #2980b9;
 }
 
+/* Estilos específicos para o botão de excluir. */
 .transactions-list .delete-btn {
   background-color: #e74c3c;
   color: white;
@@ -419,18 +443,18 @@ watch(() => props.filteredTransactions, (newVal) => {
     .transactions-list .info-date {
         margin-bottom: 0;
     }
-    /* NOVO: Garante que os controles de filtro ocupem 100% da largura e empilhem. */
+    /* Garante que os controles de filtro ocupem 100% da largura e empilhem. */
     .filter-controls {
         width: 100%;
         display: flex;
         flex-direction: column;
-        gap: 10px; /* Espaçamento entre os grupos de input do filtro */
+        gap: 10px;
     }
 
     /* Ajuste para inputs dentro dos controles de filtro em mobile */
     .filter-controls .input-group {
         width: 100%;
-        margin-bottom: 0; /* Remove margem, usa o gap do pai */
+        margin-bottom: 0;
     }
 }
 

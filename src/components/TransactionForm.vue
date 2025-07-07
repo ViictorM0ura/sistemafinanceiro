@@ -3,7 +3,7 @@
 // Gerencia a entrada de dados do usuário e emite um evento para o componente pai
 // quando uma transação é submetida (adicionada ou atualizada).
 
-import { ref, watch, computed, defineProps, defineEmits } from 'vue'; // Adicionado 'computed'
+import { ref, watch, computed, defineProps, defineEmits } from 'vue';
 
 // ============================================================================
 // PROPRIEDADES (PROPS)
@@ -16,17 +16,18 @@ const props = defineProps({
     required: true
   },
   // Propriedades para preencher o formulário no modo de edição (dados iniciais).
-  initialDescription: { type: String, default: '' },
+  initialDescription: { type: String, default: '' }, // Nome do Item/Produto (antiga descrição)
   initialAmount: { type: Number, default: 0 },
   initialType: { type: String, default: 'income' },
   initialCategory: { type: String, default: '' },
   initialDate: { type: String, default: '' },
+  initialItemDescription: { type: String, default: '' }, // Descrição detalhada do item/transação
   // Propriedades para receber as categorias de despesa e receita.
   expenseCategories: {
     type: Array,
     required: true
   },
-  incomeCategories: { // NOVO: Prop para receber as categorias de receita.
+  incomeCategories: {
     type: Array,
     required: true
   }
@@ -44,13 +45,15 @@ const emit = defineEmits(['submit-transaction']);
 // ============================================================================
 
 // Variáveis reativas locais que controlam os campos do formulário.
-const description = ref(props.initialDescription);
+const description = ref(props.initialDescription); // Nome do Item/Produto
 const amount = ref(props.initialAmount);
 const type = ref(props.initialType);
-const category = ref(props.initialCategory); // Categoria inicial pode vir da prop.
+const category = ref(props.initialCategory);
+const itemDescription = ref(props.initialItemDescription); // Descrição detalhada
 
 // Variável reativa para o campo de data.
 const today = new Date().toISOString().split('T')[0];
+console.log('TransactionForm: Valor de today calculado:', today); // Mantenha para diagnóstico, remova depois.
 const date = ref(props.initialDate || today);
 
 // ============================================================================
@@ -63,6 +66,7 @@ watch(() => props.initialAmount, (newVal) => amount.value = newVal);
 watch(() => props.initialType, (newVal) => type.value = newVal);
 watch(() => props.initialCategory, (newVal) => category.value = newVal);
 watch(() => props.initialDate, (newVal) => date.value = newVal || today);
+watch(() => props.initialItemDescription, (newVal) => itemDescription.value = newVal);
 
 // ============================================================================
 // PROPRIEDADES COMPUTADAS (LOCAIS DO COMPONENTE)
@@ -89,16 +93,18 @@ const handleSubmit = () => {
     val: amount.value,
     transType: type.value,
     cat: category.value,
-    dateStr: date.value
+    dateStr: date.value,
+    itemDesc: itemDescription.value
   });
 
   // Limpa o formulário localmente apenas se não estiver no modo de edição.
   if (!props.isEditing) {
       description.value = '';
       amount.value = 0;
-      type.value = 'income'; // Reseta para 'Receita' por padrão.
-      category.value = '';  // Limpa a categoria.
-      date.value = today; // Reseta a data para hoje.
+      type.value = 'income';
+      category.value = '';
+      date.value = today;
+      itemDescription.value = '';
   }
 };
 
@@ -119,8 +125,13 @@ const setTransactionType = (newType) => {
     <h3>{{ props.isEditing ? 'Editar Transação' : 'Adicionar Nova Transação' }}</h3>
     <form @submit.prevent="handleSubmit">
       <div class="input-group">
-        <label for="description">Descrição:</label>
-        <input type="text" id="description" v-model="description" placeholder="Ex: Salário, Aluguel" />
+        <label for="description">Nome do Item/Produto:</label>
+        <input type="text" id="description" v-model="description" placeholder="Ex: Conta de Luz, Salário Mensal" />
+      </div>
+
+      <div class="input-group">
+        <label for="itemDescription">Descrição Detalhada:</label>
+        <textarea id="itemDescription" v-model="itemDescription" placeholder="Detalhes adicionais da transação, como item comprado, serviço prestado, etc."></textarea>
       </div>
 
       <div class="input-group">
@@ -178,12 +189,20 @@ const setTransactionType = (newType) => {
 .input-group input[type="text"],
 .input-group input[type="number"],
 .input-group input[type="date"],
-.input-group select {
+.input-group select,
+.input-group textarea {
   width: 100%;
   padding: 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
+  font-size: 1em;
+}
+
+.input-group textarea {
+    resize: vertical;
+    min-height: 60px;
+    line-height: 1.5;
 }
 
 .transaction-type {
@@ -259,7 +278,9 @@ form button[type="submit"]:hover {
     .input-group label, .transaction-type label {
         font-size: 0.9em;
     }
-    .input-group input, .input-group select, .transaction-type button, form button[type="submit"] {
+    .input-group input, .input-group select,
+    .input-group textarea,
+    .transaction-type button, form button[type="submit"] {
         font-size: 0.9em;
         padding: 10px;
     }

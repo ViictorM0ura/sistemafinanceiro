@@ -14,6 +14,7 @@ import BalanceDisplay from './components/BalanceDisplay.vue';
 import TransactionForm from './components/TransactionForm.vue';
 import TransactionList from './components/TransactionList.vue';
 import ChartsDisplay from './components/ChartsDisplay.vue';
+import TransactionDetailsModal from './components/TransactionDetailsModal.vue';
 
 // Importa função para garantir que a DOM seja atualizada antes de rolar a página.
 import { nextTick } from 'vue';
@@ -29,9 +30,10 @@ const {
   type,
   category,
   date,
+  itemDescription,
   isEditing,
   expenseCategories,
-  incomeCategories, // NOVO: Desestruturando as categorias de receita.
+  incomeCategories,
   transactions,
   filteredTransactions,
   totalBalance,
@@ -47,7 +49,11 @@ const {
   updateFilter,
   exportData,
   importData,
-  chartRenderKey
+  chartRenderKey,
+  selectedTransactionDetails,
+  showDetailsModal,
+  openDetailsModal,
+  closeDetailsModal
 } = useTransactions();
 
 // ============================================================================
@@ -81,6 +87,12 @@ const handleImportFile = (event) => {
     event.target.value = '';
   }
 };
+
+// Lida com a solicitação para exibir detalhes de uma transação.
+const handleShowDetails = (transaction) => {
+  openDetailsModal(transaction); // Chama a função do composable para abrir o modal.
+};
+
 </script>
 
 <template>
@@ -103,8 +115,10 @@ const handleImportFile = (event) => {
           :initial-type="type"
           :initial-category="category"
           :initial-date="date"
+          :initial-item-description="itemDescription"
           :expense-categories="expenseCategories"
-          :income-categories="incomeCategories" @submit-transaction="handleSubmitTransaction"
+          :income-categories="incomeCategories"
+          @submit-transaction="handleSubmitTransaction"
           class="card"
         />
       </div>
@@ -118,6 +132,7 @@ const handleImportFile = (event) => {
           :update-filter="updateFilter"
           @edit-transaction="handleEditTransaction"
           @delete-transaction="handleDeleteTransaction"
+          @show-details="handleShowDetails"
           class="card"
         />
 
@@ -140,6 +155,12 @@ const handleImportFile = (event) => {
         <input type="file" id="importFile" accept=".json" @change="handleImportFile" style="display: none;" />
       </div>
     </div>
+
+    <TransactionDetailsModal
+      v-if="showDetailsModal && selectedTransactionDetails"
+      :transaction="selectedTransactionDetails"
+      @close="closeDetailsModal"
+    />
   </div>
 </template>
 
