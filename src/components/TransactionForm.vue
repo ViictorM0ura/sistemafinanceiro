@@ -1,66 +1,115 @@
 <script setup>
-import { ref, watch, defineProps, defineEmits } from 'vue';
+// FINALIDADE: Componente do formulário para adicionar ou editar transações.
+// Gerencia a entrada de dados do usuário e emite um evento para o componente pai
+// quando uma transação é submetida (adicionada ou atualizada).
 
-// Define as propriedades (props) que este componente pode receber
+import { ref, watch, computed, defineProps, defineEmits } from 'vue'; // Adicionado 'computed'
+
+// ============================================================================
+// PROPRIEDADES (PROPS)
+// ============================================================================
+
+// Define as propriedades que este componente `TransactionForm` espera receber do seu pai (App.vue).
 const props = defineProps({
   isEditing: {
     type: Boolean,
     required: true
   },
-  // Aqui vamos passar as variáveis do composable para preencher o formulário
-  // quando estiver em modo de edição. O App.vue vai passar esses valores.
+  // Propriedades para preencher o formulário no modo de edição (dados iniciais).
   initialDescription: { type: String, default: '' },
   initialAmount: { type: Number, default: 0 },
   initialType: { type: String, default: 'income' },
-  initialCategory: { type: String, default: '' }
+  initialCategory: { type: String, default: '' },
+  initialDate: { type: String, default: '' },
+  // Propriedades para receber as categorias de despesa e receita.
+  expenseCategories: {
+    type: Array,
+    required: true
+  },
+  incomeCategories: { // NOVO: Prop para receber as categorias de receita.
+    type: Array,
+    required: true
+  }
 });
 
-// Define os eventos (emits) que este componente pode emitir
+// ============================================================================
+// EVENTOS (EMITS)
+// ============================================================================
+
+// Define os eventos que este componente pode emitir para o seu componente pai (App.vue).
 const emit = defineEmits(['submit-transaction']);
 
-// Variáveis locais para o formulário dentro deste componente
+// ============================================================================
+// ESTADO LOCAL DO FORMULÁRIO
+// ============================================================================
+
+// Variáveis reativas locais que controlam os campos do formulário.
 const description = ref(props.initialDescription);
 const amount = ref(props.initialAmount);
 const type = ref(props.initialType);
-const category = ref(props.initialCategory);
+const category = ref(props.initialCategory); // Categoria inicial pode vir da prop.
 
-// Array de categorias para despesas
-const expenseCategories = ['Alimentação', 'Transporte', 'Moradia', 'Lazer', 'Saúde', 'Educação', 'Outros'];
+// Variável reativa para o campo de data.
+const today = new Date().toISOString().split('T')[0];
+const date = ref(props.initialDate || today);
 
-// Observar mudanças nas props iniciais para atualizar o formulário
-// Isso é crucial para quando o usuário clica em "Editar" e os dados vêm do pai
+// ============================================================================
+// OBSERVAÇÃO DE PROPS (PARA MODO DE EDIÇÃO)
+// ============================================================================
+
+// Observa mudanças nas props `initial...` e atualiza as variáveis locais do formulário.
 watch(() => props.initialDescription, (newVal) => description.value = newVal);
 watch(() => props.initialAmount, (newVal) => amount.value = newVal);
 watch(() => props.initialType, (newVal) => type.value = newVal);
 watch(() => props.initialCategory, (newVal) => category.value = newVal);
+watch(() => props.initialDate, (newVal) => date.value = newVal || today);
 
-// Função para lidar com a submissão do formulário
+// ============================================================================
+// PROPRIEDADES COMPUTADAS (LOCAIS DO COMPONENTE)
+// ============================================================================
+
+// Propriedade computada que retorna as categorias a serem exibidas no dropdown
+// com base no tipo de transação selecionado (Receita ou Despesa).
+const currentCategories = computed(() => {
+  return type.value === 'expense' ? props.expenseCategories : props.incomeCategories;
+});
+
+// ============================================================================
+// FUNÇÕES DE MANUSEIO DE EVENTOS
+// ============================================================================
+
+/**
+ * Lida com a submissão do formulário.
+ * Emite um evento `submit-transaction` para o componente pai com os dados do formulário.
+ */
 const handleSubmit = () => {
-  // Emite um evento 'submit-transaction' para o componente pai (App.vue)
-  // Passa os valores atuais do formulário como um objeto
+  // Emite os dados do formulário como um payload para o componente pai.
   emit('submit-transaction', {
     desc: description.value,
     val: amount.value,
     transType: type.value,
-    cat: category.value
+    cat: category.value,
+    dateStr: date.value
   });
 
-  // Limpa o formulário após emitir (a lógica de limpeza está no composable)
-  // No modo de edição, o composable já faz o reset.
-  // No modo de adição, precisamos limpar aqui, mas o composable também faz.
-  // Manter aqui garante que o UI seja resetado visualmente de imediato.
-  if (!props.isEditing) { // Só limpa se for uma nova adição
+  // Limpa o formulário localmente apenas se não estiver no modo de edição.
+  if (!props.isEditing) {
       description.value = '';
       amount.value = 0;
-      type.value = 'income';
-      category.value = '';
+      type.value = 'income'; // Reseta para 'Receita' por padrão.
+      category.value = '';  // Limpa a categoria.
+      date.value = today; // Reseta a data para hoje.
   }
 };
 
-// Função para alternar o tipo de transação e limpar/setar categoria
+/**
+ * Define o tipo de transação (Receita ou Despesa) e ajusta a categoria.
+ * Reseta a categoria selecionada para que o usuário escolha uma nova categoria para o novo tipo.
+ * @param {string} newType - O novo tipo de transação ('income' ou 'expense').
+ */
 const setTransactionType = (newType) => {
   type.value = newType;
-  category.value = newType === 'expense' ? '' : 'Receita';
+  category.value = ''; // Sempre limpa a categoria ao mudar o tipo para forçar uma nova seleção.
 };
 
 </script>
@@ -79,17 +128,22 @@ const setTransactionType = (newType) => {
         <input type="number" id="amount" v-model.number="amount" placeholder="Ex: 500.00" min="0.01" step="0.01" />
       </div>
 
+      <div class="input-group">
+        <label for="date">Data:</label>
+        <input type="date" id="date" v-model="date" />
+      </div>
+
       <div class="input-group transaction-type">
         <label>Tipo:</label>
         <button type="button" :class="{ active: type === 'income' }" @click="setTransactionType('income')">Receita</button>
         <button type="button" :class="{ active: type === 'expense' }" @click="setTransactionType('expense')">Despesa</button>
       </div>
 
-      <div class="input-group" v-if="type === 'expense'">
-        <label for="category">Categoria (Despesa):</label>
+      <div class="input-group">
+        <label for="category">Categoria ({{ type === 'income' ? 'Receita' : 'Despesa' }}):</label>
         <select id="category" v-model="category">
           <option value="" disabled>Selecione uma categoria</option>
-          <option v-for="cat in expenseCategories" :key="cat" :value="cat">{{ cat }}</option>
+          <option v-for="cat in currentCategories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
       </div>
 
@@ -99,7 +153,9 @@ const setTransactionType = (newType) => {
 </template>
 
 <style scoped>
-/* Estilos específicos para este componente - Copie da seção .transaction-form do App.vue */
+/* ============================================================================
+   ESTILOS ESPECÍFICOS DO COMPONENTE TRANSACTIONFORM
+   ============================================================================ */
 .transaction-form h3 {
   color: #34495e;
   margin-top: 0;
@@ -121,6 +177,7 @@ const setTransactionType = (newType) => {
 
 .input-group input[type="text"],
 .input-group input[type="number"],
+.input-group input[type="date"],
 .input-group select {
   width: 100%;
   padding: 12px;
@@ -186,7 +243,9 @@ form button[type="submit"]:hover {
   background-color: #368a68;
 }
 
-/* Media Queries para responsividade - ajustar apenas para este componente se necessário */
+/* ============================================================================
+   MEDIA QUERIES (RESPONSIVIDADE ESPECÍFICA DO COMPONENTE)
+   ============================================================================ */
 @media (max-width: 900px) {
     .transaction-form h3 {
         font-size: 1.6em;

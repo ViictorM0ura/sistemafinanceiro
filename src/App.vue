@@ -24,18 +24,30 @@ import { nextTick } from 'vue';
 
 // Acessa todas as variáveis reativas e funções do composable `useTransactions`.
 const {
-  description,    // Usado para preencher o formulário na edição
+  description,
   amount,
   type,
   category,
-  isEditing,      // Estado atual de edição
-  transactions,   // Lista de todas as transações
-  totalBalance,   // Saldo total calculado
-  expenseChartData, // Dados para o gráfico de despesas
-  barChartData,   // Dados para o gráfico de receitas vs. despesas
-  addOrUpdateTransaction, // Adiciona ou atualiza uma transação
-  deleteTransaction,    // Exclui uma transação
-  startEditTransaction  // Prepara o formulário para edição
+  date,
+  isEditing,
+  expenseCategories,
+  incomeCategories, // NOVO: Desestruturando as categorias de receita.
+  transactions,
+  filteredTransactions,
+  totalBalance,
+  totalIncome,
+  totalExpenses,
+  expenseChartData,
+  barChartData,
+  filterType,
+  filterValue,
+  addOrUpdateTransaction,
+  deleteTransaction,
+  startEditTransaction,
+  updateFilter,
+  exportData,
+  importData,
+  chartRenderKey
 } = useTransactions();
 
 // ============================================================================
@@ -43,11 +55,10 @@ const {
 // ============================================================================
 
 // Lida com a submissão do formulário (adição ou atualização de transação).
-// Inclui rolagem suave para o topo após a operação.
 const handleSubmitTransaction = async (payload) => {
   addOrUpdateTransaction(payload);
-  await nextTick(); // Espera a DOM ser atualizada
-  window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo
+  await nextTick();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // Lida com a exclusão de uma transação.
@@ -56,20 +67,32 @@ const handleDeleteTransaction = (id) => {
 };
 
 // Lida com o início do processo de edição de uma transação.
-// Inclui rolagem suave para o topo para exibir o formulário preenchido.
 const handleEditTransaction = async (transaction) => {
   startEditTransaction(transaction);
-  await nextTick(); // Espera a DOM ser atualizada
-  window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo
+  await nextTick();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
+// Lida com a seleção de arquivo para importação de dados.
+const handleImportFile = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    importData(file);
+    event.target.value = '';
+  }
+};
 </script>
 
 <template>
   <div id="app">
     <h1>Sistema Financeiro</h1>
 
-    <BalanceDisplay :balance="totalBalance" class="card" />
+    <BalanceDisplay
+      :balance="totalBalance"
+      :total-income="totalIncome"
+      :total-expenses="totalExpenses"
+      class="card"
+    />
 
     <div class="main-content">
       <div class="left-column">
@@ -79,7 +102,9 @@ const handleEditTransaction = async (transaction) => {
           :initial-amount="amount"
           :initial-type="type"
           :initial-category="category"
-          @submit-transaction="handleSubmitTransaction"
+          :initial-date="date"
+          :expense-categories="expenseCategories"
+          :income-categories="incomeCategories" @submit-transaction="handleSubmitTransaction"
           class="card"
         />
       </div>
@@ -87,30 +112,39 @@ const handleEditTransaction = async (transaction) => {
       <div class="right-column">
         <TransactionList
           :transactions="transactions"
+          :filtered-transactions="filteredTransactions"
+          :filter-type="filterType"
+          :filter-value="filterValue"
+          :update-filter="updateFilter"
           @edit-transaction="handleEditTransaction"
           @delete-transaction="handleDeleteTransaction"
           class="card"
         />
 
         <ChartsDisplay
+          :key="chartRenderKey"
           :expense-data="expenseChartData"
           :bar-data="barChartData"
-          :has-expenses="transactions.filter(t => t.type === 'expense').length > 0"
-          :has-transactions="transactions.length > 0"
+          :has-expenses="filteredTransactions.some(t => t.type === 'expense')"
+          :has-transactions="filteredTransactions.length > 0"
+          class="card"
         />
+      </div>
+    </div>
+
+    <div class="data-management card">
+      <h2>Gerenciamento de Dados</h2>
+      <div class="button-group">
+        <button @click="exportData" class="export-btn">Exportar Dados</button>
+        <label for="importFile" class="import-label">Importar Dados</label>
+        <input type="file" id="importFile" accept=".json" @change="handleImportFile" style="display: none;" />
       </div>
     </div>
   </div>
 </template>
 
 <style>
-/* ============================================================================
-   ESTILOS GLOBAIS E DE LAYOUT PRINCIPAL
-   Define a estrutura geral da aplicação.
-   ============================================================================ */
-
-/* Estilos para o corpo da página e HTML: Reseta margens, padding, define altura total
-   e impede rolagem horizontal. Adiciona rolagem suave. */
+/* Estilos GLOBAIS - Mantenha aqui ou em um arquivo CSS separado globalmente */
 html, body {
   margin: 0;
   padding: 0;
@@ -121,8 +155,6 @@ html, body {
   scroll-behavior: smooth;
 }
 
-/* Estilos para o container principal da aplicação.
-   Define fonte, cores, padding e layout flexbox vertical. */
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -137,14 +169,12 @@ html, body {
   text-align: center;
 }
 
-/* Estilos para o título principal da aplicação. */
 h1 {
   color: #34495e;
   margin-bottom: 20px;
   font-size: 2.5em;
 }
 
-/* Estilo para os blocos de conteúdo visual (cards). */
 .card {
   background-color: #ffffff;
   padding: 20px;
@@ -153,34 +183,65 @@ h1 {
   text-align: left;
 }
 
-/* Estilos para o container principal do layout (grid de colunas). */
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 2fr; /* Duas colunas: 1/3 para esq., 2/3 para dir. */
+  grid-template-columns: 1fr 2fr;
   gap: 25px;
   align-items: start;
   flex-grow: 1;
 }
 
-/* Estilos para a coluna da esquerda (formulário). */
 .left-column {
   display: flex;
   flex-direction: column;
 }
 
-/* Estilos para a coluna da direita (histórico e gráficos). */
 .right-column {
   display: flex;
   flex-direction: column;
   gap: 25px;
 }
 
-/* ============================================================================
-   MEDIA QUERIES (RESPONSIVIDADE GERAL)
-   Adapta o layout a diferentes tamanhos de tela.
-   ============================================================================ */
+/* NOVO: Estilos para a seção de gerenciamento de dados */
+.data-management {
+  text-align: center;
+}
 
-/* Para tablets e notebooks menores (até 900px): muda para layout de uma coluna. */
+.data-management h2 {
+  color: #34495e;
+  margin-bottom: 20px;
+  font-size: 1.8em;
+}
+
+.data-management .button-group {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.data-management button, .data-management .import-label {
+  background-color: #3498db;
+  color: white;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1.1em;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.data-management button:hover, .data-management .import-label:hover {
+  background-color: #2980b9;
+}
+
+/* Media Queries para responsividade geral */
 @media (max-width: 900px) {
   #app {
     padding: 15px;
@@ -200,7 +261,6 @@ h1 {
   }
 }
 
-/* Para celulares (até 600px): ajustes finos de espaçamento e fonte. */
 @media (max-width: 600px) {
   #app {
     padding: 10px;
@@ -213,10 +273,19 @@ h1 {
   .card {
     padding: 15px;
   }
+  .data-management h2 {
+    font-size: 1.5em;
+  }
+  .data-management button, .data-management .import-label {
+    padding: 10px 20px;
+    font-size: 1em;
+  }
 }
 
-/* Para celulares muito pequenos (até 400px): handled pelos componentes filhos. */
 @media (max-width: 400px) {
-  /* Estilos específicos de responsividade para esta largura são gerenciados pelos componentes individuais. */
+  .data-management .button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

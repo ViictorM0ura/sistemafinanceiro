@@ -1,32 +1,58 @@
 <script setup>
-import { defineProps } from 'vue';
-// Importamos os componentes de gráfico do vue-chartjs
+// FINALIDADE: Componente responsável por exibir os gráficos de dados financeiros.
+// Ele acessa os dados de transações filtradas e os dados dos gráficos diretamente do composable,
+// e calcula as condições para exibir ou não os gráficos.
+
+import { computed, defineProps, watch } from 'vue'; // Adicionado 'watch'
 import { Bar, Pie } from 'vue-chartjs';
-// Importamos e registramos os elementos do chart.js
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement } from 'chart.js';
+
+import { useTransactions } from '../composables/useTransactions'; // Mantido para demonstrar que não é usado
 
 // Registrar os componentes e plugins do Chart.js que vamos usar
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement);
 
-// Define as propriedades (props) que este componente pode receber
+// ============================================================================
+// PROPRIEDADES (PROPS)
+// ============================================================================
+
+// Define as propriedades que este componente `ChartsDisplay` espera receber do seu pai (App.vue).
 const props = defineProps({
-  expenseData: {
+  expenseData: {    // Dados para o gráfico de pizza de despesas
     type: Object,
     required: true
   },
-  barData: {
+  barData: {        // Dados para o gráfico de barras de receitas vs. despesas
     type: Object,
     required: true
   },
-  hasExpenses: { // Para mostrar/esconder o gráfico de pizza
+  hasExpenses: {    // Booleano: true se houver despesas para o gráfico de pizza
     type: Boolean,
     default: false
   },
-  hasTransactions: { // Para mostrar/esconder o gráfico de barras
+  hasTransactions: { // Booleano: true se houver transações para o gráfico de barras
     type: Boolean,
     default: false
   }
 });
+
+// ============================================================================
+// DIAGNÓSTICO: Verificando a Reatividade das Props
+// ============================================================================
+
+// Observa a prop `expenseData` para ver se ela está sendo atualizada neste componente.
+watch(() => props.expenseData, (newVal) => {
+  console.log('ChartsDisplay: expenseData ATUALIZADO NESTE COMPONENTE!', newVal);
+}, { deep: true }); // `deep: true` para observar mudanças internas no objeto de dados.
+
+// Observa a prop `barData` para ver se ela está sendo atualizada neste componente.
+watch(() => props.barData, (newVal) => {
+  console.log('ChartsDisplay: barData ATUALIZADO NESTE COMPONENTE!', newVal);
+}, { deep: true }); // `deep: true` para observar mudanças internas no objeto de dados.
+
+// ============================================================================
+// OPÇÕES DE GRÁFICO (CONFIGURAÇÕES VISUAIS)
+// ============================================================================
 
 // Opções de gráfico para o gráfico de pizza
 const expenseChartOptions = {
@@ -80,13 +106,18 @@ const barChartOptions = {
 </template>
 
 <style scoped>
-/* Estilos específicos para este componente - Copie da seção .charts-section do App.vue */
+/* ============================================================================
+   ESTILOS ESPECÍFICOS DO COMPONENTE CHARTSDISPLAY
+   ============================================================================ */
+
+/* Estilos para a seção que contém ambos os gráficos. */
 .charts-section {
   display: grid;
-  grid-template-columns: 1fr; /* Gráficos empilhados na coluna direita */
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
+/* Estilos para o container individual de cada gráfico. */
 .chart-container {
   background-color: #f9f9f9;
   padding: 15px;
@@ -97,7 +128,7 @@ const barChartOptions = {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  overflow: hidden; /* Garante que o canvas do Chart.js não cause overflow */
+  overflow: hidden;
 }
 
 .chart-container p {
@@ -105,7 +136,11 @@ const barChartOptions = {
   font-style: italic;
 }
 
-/* Media Queries para responsividade - ajustar apenas para este componente se necessário */
+/* ============================================================================
+   MEDIA QUERIES (RESPONSIVIDADE ESPECÍFICA DO COMPONENTE)
+   ============================================================================ */
+
+/* Para telas de até 600px (celulares): Ajusta o padding dos gráficos. */
 @media (max-width: 600px) {
     .chart-container {
         padding: 10px;

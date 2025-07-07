@@ -1,38 +1,205 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+// FINALIDADE: Componente responsável por exibir a lista de transações financeiras e os controles de filtro.
+// Ele interage diretamente com o composable para obter dados filtrados e gerenciar a interface do filtro.
 
-// Define as propriedades (props) que este componente pode receber
+import { defineProps, defineEmits, ref, watch } from 'vue';
+import { useTransactions } from '../composables/useTransactions';
+
+// ============================================================================
+// PROPRIEDADES (PROPS)
+// ============================================================================
+
+// Define as propriedades que este componente `TransactionList` espera receber do seu pai (App.vue).
 const props = defineProps({
-  transactions: {
+  transactions: { // Lista COMPLETA de transações (para msg de "Nenhuma transação adicionada")
     type: Array,
+    required: true
+  },
+  filteredTransactions: { // Lista de transações JÁ FILTRADAS
+    type: Array,
+    required: true
+  },
+  filterType: { // Tipo de filtro selecionado
+    type: String,
+    required: true
+  },
+  filterValue: { // Valor do filtro
+    type: String,
+    required: true
+  },
+  updateFilter: { // Função para atualizar o filtro
+    type: Function,
     required: true
   }
 });
 
-// Define os eventos (emits) que este componente pode emitir
-const emit = defineEmits(['edit-transaction', 'delete-transaction']);
+// ============================================================================
+// EVENTOS (EMITS)
+// ============================================================================
 
-// Função local para emitir o evento de edição
+// Define os eventos que este componente pode emitir para o seu componente pai (`App.vue`).
+const emit = defineEmits([
+  'edit-transaction',
+  'delete-transaction'
+]);
+
+// ============================================================================
+// LÓGICA DE DADOS (USO DO COMPOSABLE)
+// ============================================================================
+
+// Acessa as variáveis e funções de filtro do composable `useTransactions`.
+const {
+  transactions: allTransactionsFromComposble, // Para o v-if inicial, não confunda com a prop 'transactions'
+  filteredTransactions: filteredTransactionsFromComposble, // Otimização: usa um nome diferente para evitar conflito com a prop
+  filterType: filterTypeFromComposble,
+  filterValue: filterValueFromComposble,
+  updateFilter: updateFilterFromComposble
+} = useTransactions();
+
+// Variável local para obter a data atual no formato YYYY-MM-DD.
+const today = new Date().toISOString().split('T')[0];
+console.log('TransactionList: Valor de today calculado:', today); // DIAGNÓSTICO
+
+// Variável reativa local para o input de data no filtro.
+const currentFilterDate = ref(props.filterValue || today);
+
+// ============================================================================
+// FUNÇÕES DE MANUSEIO DE EVENTOS E FORMATAÇÃO
+// ============================================================================
+
+/**
+ * Lida com o clique no botão "Editar" de uma transação.
+ * @param {object} transaction - O objeto da transação a ser editada.
+ */
 const handleEdit = (transaction) => {
   emit('edit-transaction', transaction);
 };
 
-// Função local para emitir o evento de exclusão
+/**
+ * Lida com o clique no botão "Excluir" de uma transação.
+ * @param {number} id - O ID da transação a ser excluída.
+ */
 const handleDelete = (id) => {
   emit('delete-transaction', id);
 };
+
+/**
+ * Formata uma string de data (YYYY-MM-DD) para o formato local (DD/MM/AAAA).
+ * @param {string} dateString - A string de data no formato 'YYYY-MM-DD'.
+ * @returns {string} A data formatada ou 'Data Inválida'.
+ */
+const formatTransactionDate = (dateString) => {
+  if (!dateString) {
+    return 'Data Inválida';
+  }
+  const [year, month, day] = dateString.split('-').map(Number);
+  const localDate = new Date(year, month - 1, day);
+  if (isNaN(localDate.getTime())) {
+    return 'Data Inválida';
+  }
+  return localDate.toLocaleDateString('pt-BR');
+};
+
+/**
+ * Lida com a mudança no tipo de filtro selecionado (Dia, Mês, Ano, Nenhum).
+ * Define um valor padrão para o `filterValue` e atualiza o filtro no composable.
+ * @param {Event} event - O evento de mudança do select.
+ */
+const handleFilterTypeChange = (event) => {
+  const newType = event.target.value;
+  let newFilterValue = '';
+  if (newType === 'day') {
+    newFilterValue = today;
+  } else if (newType === 'month') {
+    newFilterValue = today.substring(0, 7);
+  } else if (newType === 'year') {
+    newFilterValue = today.substring(0, 4);
+  }
+  props.updateFilter(newType, newFilterValue);
+  currentFilterDate.value = newFilterValue;
+};
+
+/**
+ * Lida com a mudança no valor do filtro (data, mês, ano).
+ * Chama a função `updateFilter` recebida via props.
+ * @param {Event} event - O evento de mudança do input.
+ */
+const handleFilterValueChange = (event) => {
+  props.updateFilter(props.filterType, event.target.value);
+};
+
+// ============================================================================
+// DIAGNÓSTICO: Observando `filteredTransactions` (para confirmar reatividade)
+// ============================================================================
+
+// Observa a prop `filteredTransactions` para confirmar se está atualizando neste componente.
+watch(() => props.filteredTransactions, (newVal) => {
+  console.log('TransactionList: filteredTransactions ATUALIZADO NESTE COMPONENTE!', newVal);
+}, { deep: true });
 </script>
 
 <template>
   <div class="transactions-list">
     <h3>Histórico de Transações</h3>
+
+    <div class="filter-controls">
+      <div class="input-group">
+        <label for="filterType">Filtrar por:</label>
+        <select id="filterType" :value="props.filterType" @change="handleFilterTypeChange">
+          <option value="none">Nenhum</option>
+          <option value="day">Dia</option>
+          <option value="month">Mês</option>
+          <option value="year">Ano</option>
+        </select>
+      </div>
+
+      <div class="input-group" v-if="props.filterType !== 'none'">
+        <label for="filterValue">Valor:</label>
+        <input
+          v-if="props.filterType === 'day'"
+          type="date"
+          id="filterValue"
+          :value="props.filterValue"
+          @change="handleFilterValueChange"
+        />
+        <input
+          v-else-if="props.filterType === 'month'"
+          type="month"
+          id="filterValue"
+          :value="props.filterValue"
+          @change="handleFilterValueChange"
+        />
+        <input
+          v-else-if="props.filterType === 'year'"
+          type="number"
+          id="filterValue"
+          :value="props.filterValue"
+          placeholder="Ex: 2023"
+          @change="handleFilterValueChange"
+        />
+        <input
+          v-else
+          type="text"
+          id="filterValue"
+          :value="props.filterValue"
+          disabled
+          placeholder="Selecione um tipo de filtro"
+        />
+      </div>
+    </div>
     <ul>
-      <li v-if="props.transactions.length === 0">Nenhuma transação adicionada ainda.</li>
-      <li v-for="transaction in props.transactions" :key="transaction.id" :class="transaction.type">
-        <div class="transaction-details">
-          <span>{{ transaction.description }}</span>
-          <span class="category-display">{{ transaction.type === 'expense' ? `(${transaction.category})` : '' }}</span>
-          <span>R$ {{ transaction.amount.toFixed(2) }}</span>
+      <li v-if="props.filteredTransactions.length === 0">
+        {{ props.transactions.length === 0 ? 'Nenhuma transação adicionada ainda.' : 'Nenhuma transação encontrada para o filtro atual.' }}
+      </li>
+      
+      <li v-else v-for="transaction in props.filteredTransactions" :key="transaction.id" :class="transaction.type">
+        <div class="transaction-info">
+          <span class="info-description">{{ transaction.description }}</span>
+          <span class="info-category">{{ transaction.category ? `(${transaction.category})` : '' }}</span>
+          <span class="info-amount">R$ {{ transaction.amount.toFixed(2) }}</span>
+          <span class="info-date">
+            {{ formatTransactionDate(transaction.date) }}
+          </span>
         </div>
         <div class="transaction-actions">
           <button @click="handleEdit(transaction)" class="edit-btn">Editar</button>
@@ -44,7 +211,11 @@ const handleDelete = (id) => {
 </template>
 
 <style scoped>
-/* Estilos específicos para este componente - Copie da seção .transactions-list do App.vue */
+/* ============================================================================
+   ESTILOS ESPECÍFICOS DO COMPONENTE TRANSACTIONLIST
+   ============================================================================ */
+
+/* Estilos para o título da seção de histórico. */
 .transactions-list h3 {
   color: #34495e;
   margin-top: 0;
@@ -53,11 +224,44 @@ const handleDelete = (id) => {
   font-size: 1.8em;
 }
 
+/* Estilos para os controles de filtro */
+.filter-controls {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.filter-controls .input-group {
+    margin-bottom: 10px;
+}
+
+/* Estilos para o input-group, labels, inputs e selects (reutilizados do TransactionForm) */
+.filter-controls .input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+.filter-controls .input-group select,
+.filter-controls .input-group input[type="date"],
+.filter-controls .input-group input[type="month"],
+.filter-controls .input-group input[type="number"],
+.filter-controls .input-group input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1em;
+}
+
+/* Estilos para a lista não ordenada de transações. */
 .transactions-list ul {
   list-style: none;
   padding: 0;
 }
 
+/* Estilos para cada item da lista de transações (a linha inteira) */
 .transactions-list li {
   display: flex;
   justify-content: space-between;
@@ -66,30 +270,54 @@ const handleDelete = (id) => {
   border-bottom: 1px dashed #eee;
   font-size: 1em;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 10px;
 }
 
 .transactions-list li:last-child {
   border-bottom: none;
 }
 
-.transactions-list .transaction-details {
+/* Estilos para o container das informações da transação (desc, cat, valor, data) */
+.transactions-list .transaction-info {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: baseline;
   flex-grow: 1;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.transactions-list .transaction-details span {
-  width: 100%;
+/* Estilos individuais para as partes da informação da transação */
+.transactions-list .info-description {
+  font-weight: bold;
+  color: #2c3e50;
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.transactions-list .category-display {
+.transactions-list .info-category {
   font-size: 0.9em;
   color: #888;
-  margin-top: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
+.transactions-list .info-amount {
+  font-weight: bold;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.transactions-list .info-date {
+  font-size: 0.8em;
+  color: #777;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Estilos para o container dos botões de ação (Editar, Excluir) */
 .transactions-list .transaction-actions {
   display: flex;
   gap: 8px;
@@ -135,35 +363,79 @@ const handleDelete = (id) => {
   font-weight: bold;
 }
 
-/* Media Queries para responsividade - ajustar apenas para este componente se necessário */
+/* Estilo para a data da transação */
+.transactions-list .transaction-date {
+  font-size: 0.8em;
+  color: #777;
+  margin-top: 5px;
+}
+
+
+/* ============================================================================
+   MEDIA QUERIES (RESPONSIVIDADE ESPECÍFICA DO COMPONENTE)
+   ============================================================================ */
+
+/* Para telas de até 900px (tablets): Ajusta o tamanho do título. */
 @media (max-width: 900px) {
     .transactions-list h3 {
         font-size: 1.6em;
     }
 }
 
+/* Para telas de até 600px (celulares):
+   Ajustes para empilhar os elementos da lista e otimizar o espaçamento. */
 @media (max-width: 600px) {
     .transactions-list h3 {
         font-size: 1.2em;
     }
     .transactions-list li {
-        font-size: 0.85em;
-        padding: 8px 0;
-        flex-direction: column; /* Empilha os detalhes e ações */
-        align-items: flex-start; /* Alinha tudo à esquerda */
+        flex-direction: column;
+        align-items: flex-start;
     }
-    .transactions-list .transaction-details {
-        margin-bottom: 10px; /* Espaço entre detalhes e ações */
+    .transactions-list .transaction-info {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        margin-bottom: 10px;
     }
     .transactions-list .transaction-actions {
-        width: 100%; /* Botões de ação ocupam a largura total */
-        justify-content: flex-end; /* Alinha botões à direita */
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    /* Ajustes específicos para os spans dentro de info-description */
+    .transactions-list .info-description,
+    .transactions-list .info-category,
+    .transactions-list .info-amount,
+    .transactions-list .info-date {
+        white-space: normal;
+        text-overflow: clip;
+        overflow: visible;
+        max-width: 100%;
+        flex-grow: 0;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    .transactions-list .info-date {
+        margin-bottom: 0;
+    }
+    /* NOVO: Garante que os controles de filtro ocupem 100% da largura e empilhem. */
+    .filter-controls {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px; /* Espaçamento entre os grupos de input do filtro */
+    }
+
+    /* Ajuste para inputs dentro dos controles de filtro em mobile */
+    .filter-controls .input-group {
+        width: 100%;
+        margin-bottom: 0; /* Remove margem, usa o gap do pai */
     }
 }
+
+/* Para telas de até 400px (celulares muito pequenos): */
 @media (max-width: 400px) {
-    .transactions-list li span:last-child {
-        text-align: right;
-        min-width: fit-content;
-    }
+    /* Não há ajustes adicionais significativos aqui para este componente além dos 600px */
 }
 </style>
